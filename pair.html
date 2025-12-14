@@ -6,70 +6,110 @@
   <title>GARFIELD-WHATSAPP-BOT-v10</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
-    body { display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background:#141414; font-family:'Arial',sans-serif; color:#fff; }
-    .container { display:flex; flex-direction:column; align-items:center; }
-    .box { width:300px; padding:20px; text-align:center; background:rgba(0,0,255,0.8); border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.7); }
-    .input-container { display:flex; gap:0.3rem; margin-top:10px; }
-    .input-container input { flex:1; padding:0.8rem; border-radius:0.5rem 0 0 0.5rem; border:none; background:#000; color:#fff; }
-    .input-container button { padding:0.8rem; border-radius:0 0.5rem 0.5rem 0; border:none; background:#25d366; color:#fff; cursor:pointer; }
-    .input-container button:hover { background:#2980b9; }
-    #qr-canvas { margin-top:15px; }
-    #waiting-message { margin-top:10px; color:#fff; }
-    .fa-spinner { animation:spin 2s linear infinite; }
-    @keyframes spin { 0%{transform:rotate(0deg);}100%{transform:rotate(360deg);} }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #141414;
+      font-family: 'Arial', sans-serif;
+      color: #00ffe7;
+      text-align: center;
+    }
+
+    .container {
+      background: rgba(0,0,255,0.8);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px #00ffe7;
+      width: 320px;
+    }
+
+    h1 {
+      margin-bottom: 15px;
+      font-size: 24px;
+    }
+
+    input {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #25d366;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #1da851;
+    }
+
+    #loading-spinner {
+      display: none;
+      margin: 15px 0;
+      color: #00ffe7;
+    }
+
+    #qr-container img {
+      width: 300px;
+      height: 300px;
+      border-radius: 15px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="box">
-      <h3>GARFIELD-WHATSAPP-BOT-v10</h3>
-      <h6>Enter Your WhatsApp Number with Country Code</h6>
-      <div class="input-container">
-        <input type="number" id="number" placeholder="94xxxxxxxx">
-        <button id="submit">Get QR</button>
-      </div>
-      <div id="waiting-message"></div>
-      <canvas id="qr-canvas"></canvas>
+    <h1>GARFIELD BOT QR</h1>
+    <input type="text" id="phone" placeholder="Your Phone Number" value="+94">
+    <button id="generateBtn">Generate QR</button>
+
+    <div id="loading-spinner">
+      <i class="fas fa-spinner fa-spin fa-2x"></i>
+      <p>Generating QR...</p>
     </div>
+
+    <div id="qr-container"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
-    const numberInput = document.getElementById("number");
-    const submitBtn = document.getElementById("submit");
-    const waitingMsg = document.getElementById("waiting-message");
-    const qrCanvas = document.getElementById("qr-canvas");
+    const generateBtn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('loading-spinner');
+    const qrContainer = document.getElementById('qr-container');
+    const phoneInput = document.getElementById('phone');
 
-    submitBtn.addEventListener("click", async () => {
-      const number = numberInput.value.replace(/[^0-9]/g, "");
-      if (!number || number.length < 10) {
-        waitingMsg.innerText = "❗ Invalid number format. Please try again.";
-        return;
-      }
-
-      waitingMsg.innerHTML = 'Generating QR... <i class="fas fa-spinner fa-spin"></i>';
-      qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+    generateBtn.addEventListener('click', async () => {
+      qrContainer.innerHTML = '';
+      spinner.style.display = 'block';
 
       try {
-        const { data } = await axios(`/qr?number=${number}`);
-        if (!data.qr) {
-          waitingMsg.innerText = data.message || "❗ QR code generation failed.";
-          return;
+        const phone = phoneInput.value.replace(/[^0-9+]/g, '');
+        const response = await axios.get(`/qr?number=${phone}`);
+        
+        if (response.data.qr) {
+          qrContainer.innerHTML = `<img src="${response.data.qr}" alt="WhatsApp QR Code">`;
+        } else {
+          qrContainer.innerHTML = `<p>${response.data.message || 'QR generation failed'}</p>`;
         }
-
-        QRCode.toCanvas(qrCanvas, data.qr, { width: 200 }, function (error) {
-          if (error) {
-            waitingMsg.innerText = "❗ QR rendering failed.";
-            console.error(error);
-          } else {
-            waitingMsg.innerText = "Scan this QR with WhatsApp to login.";
-          }
-        });
 
       } catch (err) {
         console.error(err);
-        waitingMsg.innerText = "❗ Service unavailable.";
+        qrContainer.innerHTML = '<p>Error generating QR code</p>';
+      } finally {
+        spinner.style.display = 'none';
       }
     });
   </script>
