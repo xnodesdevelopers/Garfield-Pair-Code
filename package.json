@@ -1,5 +1,5 @@
 {
-  "name": "gifted-session",
+  "name": "garfield-session",
   "main": "./index.js",
   "type": "commonjs",
   "scripts": {
