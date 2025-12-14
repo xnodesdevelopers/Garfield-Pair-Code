@@ -1,199 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Garfield Bot – WhatsApp QR</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garfield Bot – QR Link</title>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
-  <style>
-    :root {
-      --bg: #0b0f1a;
-      --card: #11162a;
-      --primary: #4f8cff;
-      --text: #e8ecff;
-      --muted: #9aa3c7;
-      --border: rgba(255,255,255,0.08);
-    }
+<style>
+:root{
+  --bg:#0b0f1a;
+  --card:#11162a;
+  --primary:#4f8cff;
+  --text:#e8ecff;
+  --muted:#9aa3c7;
+  --border:rgba(255,255,255,.08);
+}
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+*{box-sizing:border-box}
 
-    body {
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #141b38, #070a14);
-      font-family: Inter, system-ui, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 15px;
-      color: var(--text);
-    }
+body{
+  min-height:100vh;
+  background:radial-gradient(circle at top,#141b38,#070a14);
+  font-family:Inter,system-ui;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:15px;
+  color:var(--text);
+}
 
-    .container {
-      width: 100%;
-      max-width: 420px;
-      background: var(--card);
-      border-radius: 18px;
-      padding: 26px;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 40px rgba(0,0,0,.45);
-      text-align: center;
-    }
+.container{
+  width:100%;
+  max-width:420px;
+  background:var(--card);
+  border-radius:18px;
+  padding:26px;
+  border:1px solid var(--border);
+  box-shadow:0 20px 40px rgba(0,0,0,.45);
+  text-align:center;
+}
 
-    .logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      margin: 0 auto 14px;
-      background: linear-gradient(135deg, var(--primary), #7aa2ff);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px;
-      color: #fff;
-      box-shadow: 0 10px 30px rgba(79,140,255,.45);
-    }
+.logo{
+  width:70px;height:70px;
+  border-radius:50%;
+  margin:0 auto 14px;
+  background:linear-gradient(135deg,var(--primary),#7aa2ff);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:#fff;
+}
 
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
+h1{font-size:23px;margin-bottom:6px}
+.subtitle{font-size:14px;color:var(--muted);margin-bottom:20px}
 
-    .subtitle {
-      font-size: 14px;
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
+.input{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1.5px solid var(--border);
+  background:#0c1125;
+  color:var(--text);
+  font-size:15px;
+  margin-bottom:16px;
+}
 
-    .social {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 22px;
-    }
+.btn{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  background:var(--primary);
+  color:#fff;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+}
 
-    .social a {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      text-decoration: none;
-      transition: .3s;
-    }
+.qr-box{
+  background:#0c1125;
+  border-radius:16px;
+  padding:22px;
+  border:1px solid var(--border);
+  margin-top:18px;
+}
 
-    .youtube { background:#ff0000; }
-    .whatsapp { background:#25d366; }
-    .github { background:#24292e; }
+.qr-box img{
+  max-width:260px;
+  border-radius:12px;
+}
 
-    .social a:hover {
-      transform: translateY(-3px) scale(1.05);
-    }
+.loading{
+  font-size:22px;
+  color:var(--primary);
+  animation:spin 1s linear infinite;
+}
 
-    .qr-box {
-      background: #0c1125;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid var(--border);
-      margin-bottom: 18px;
-    }
+@keyframes spin{to{transform:rotate(360deg)}}
 
-    .qr-box img {
-      max-width: 260px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.6);
-    }
-
-    .instructions {
-      margin-top: 14px;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .loading {
-      font-size: 22px;
-      color: var(--primary);
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .error {
-      color: #ff6b6b;
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
-    .footer {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 10px;
-    }
-  </style>
+.error{color:#ff6b6b;font-size:14px}
+</style>
 </head>
 
 <body>
-  <div class="container">
+<div class="container">
 
-    <div class="logo">
-      <i class="fas fa-qrcode"></i>
-    </div>
+  <div class="logo"><i class="fas fa-qrcode"></i></div>
+  <h1>Garfield Bot</h1>
+  <p class="subtitle">Enter number → Scan QR</p>
 
-    <h1>Garfield Bot</h1>
-    <p class="subtitle">Scan QR to link WhatsApp</p>
+  <!-- ✅ INPUT NUMBER -->
+  <input id="number" class="input" placeholder="947xxxxxxxx" />
 
-    <div class="social">
-      <a class="youtube" href="https://youtube.com" target="_blank"><i class="fab fa-youtube"></i></a>
-      <a class="whatsapp" href="https://whatsapp.com" target="_blank"><i class="fab fa-whatsapp"></i></a>
-      <a class="github" href="https://github.com" target="_blank"><i class="fab fa-github"></i></a>
-    </div>
+  <!-- ✅ QR BUTTON -->
+  <button class="btn" onclick="generateQR()">Generate QR</button>
 
-    <div class="qr-box" id="qrBox">
-      <i class="fas fa-spinner loading"></i>
-    </div>
-
-    <div class="footer">
-      © 2025 Garfield Bot
-    </div>
-
+  <!-- QR AREA -->
+  <div class="qr-box" id="qrBox">
+    <i class="fas fa-spinner loading"></i>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.min.js"></script>
-  <script>
-    async function loadQR() {
-      const box = document.getElementById("qrBox");
+</div>
 
-      try {
-        const res = await axios.get("/qr");
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.min.js"></script>
+<script>
+async function generateQR(){
+  const num=document.getElementById("number").value.replace(/[^0-9]/g,"");
+  const box=document.getElementById("qrBox");
 
-        if (!res.data || !res.data.qr) {
-          box.innerHTML = '<div class="error">Failed to generate QR</div>';
-          return;
-        }
+  if(!num){
+    box.innerHTML='<div class="error">Enter WhatsApp number</div>';
+    return;
+  }
 
-        box.innerHTML = `
-          <img src="${res.data.qr}" alt="QR Code">
-          <div class="instructions">
-            Scan this QR using WhatsApp → Linked Devices
-          </div>
-        `;
-      } catch (e) {
-        box.innerHTML = '<div class="error">QR generation error</div>';
-      }
+  box.innerHTML='<i class="fas fa-spinner loading"></i>';
+
+  try{
+    const res=await axios.get(`/qr?number=${num}`);
+    if(!res.data || !res.data.qr){
+      box.innerHTML='<div class="error">Failed to generate QR</div>';
+      return;
     }
-
-    loadQR();
-  </script>
+    box.innerHTML=`<img src="${res.data.qr}">`;
+  }catch(e){
+    box.innerHTML='<div class="error">QR error</div>';
+  }
+}
+</script>
 </body>
 </html>
