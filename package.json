@@ -1,32 +1,29 @@
 {
-  "description": "Garfield pair device",
+  "name": "garfield-pair-device",
+  "version": "1.0.0",
+  "description": "Garfield WhatsApp QR & session device",
   "main": "./module.js",
-  "type": "commonjs",
-  "engines" : { 
-    "node" : "18.20.6"
-    },
-    "scripts": {
-      "start": "pm2 start module.js --deep-monitoring --attach --name module",
-      "stop": "pm2 stop module",
-     "restart": "pm2 restart module"
-    },
-  "author": "",
-  "license": "GPL-3.0 license",
+  "type": "module",
+  "engines": { 
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "pm2 start module.js --deep-monitoring --attach --name garfield-session",
+    "stop": "pm2 stop garfield-session",
+    "restart": "pm2 restart garfield-session"
+  },
+  "author": "Xnodes Developers",
+  "license": "GPL-3.0",
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.21",
-    "qrcode": "^1.5.4",
-    "awesome-phonenumber": "7.2.0",
-    "megajs": "^1.1.0",
-    "pino": "^8.1.0",
-    "path": "^0.12.7",
-    "phone" : "3.1.30",
-    "body-parser": "^1.20.3",
-    "express": "^4.21.2",
-    "path": "^0.12.7",
-    "pm2": "^5.2.0"
-   }
+    "@whiskeysockets/baileys": "latest",
+    "qrcode": "latest",
+    "awesome-phonenumber": "latest",
+    "megajs": "latest",
+    "pino": "latest",
+    "body-parser": "latest",
+    "express": "latest",
+    "phone": "latest",
+    "pm2": "latest"
+  }
 }
-
-
-
 
