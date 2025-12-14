@@ -1,42 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>GARFIELD-WHATSAPP-BOT QR</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Garfield Bot – WhatsApp Link</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+
+<style>
+:root {
+  --primary-color: #10002b;
+  --secondary-color: #ffffff;
+  --accent-color: #7b2cbf;
+  --text-color: #10002b;
+  --background-color: #ffffff;
+  --hover-color: #f5f5f5;
+  --border-color: rgba(0, 0, 0, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: Inter, sans-serif;
+  background: var(--background-color);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+}
+
+.container {
+  max-width: 450px;
+  width: 100%;
+  background: #fff;
+  border-radius: 16px;
+  padding: 25px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 6px 18px rgba(0,0,0,.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.logo img {
+  width: 80px;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: 14px;
+  opacity: .7;
+}
+
+.social-icons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.social-icons a {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.youtube { background:#FF0000 }
+.whatsapp { background:#0cfa10 }
+.github { background:#333 }
+
+.toggle-container {
+  display: flex;
+  background: var(--hover-color);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.toggle-option {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.toggle-option.active {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.input-group { margin-bottom: 18px; }
+.input-group.hidden { display:none }
+
+.input-field {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-color);
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--primary-color);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.loading { text-align:center; display:none; margin:12px }
+
+.code-display {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--hover-color);
+  text-align: center;
+  font-weight: 600;
+}
+
+.qr-display {
+  display:none;
+  text-align:center;
+}
+
+.qr-display img {
+  max-width:260px;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+
+.copy-btn {
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border-color);
+  cursor:pointer;
+}
+
+.footer {
+  text-align:center;
+  font-size:12px;
+  opacity:.6;
+  margin-top:18px;
+}
+</style>
 </head>
+
 <body>
-<h3>Enter your WhatsApp number</h3>
-<input id="number" placeholder="94xxxxxxxx">
-<button id="submit">Get QR</button>
-<br><br>
-<img id="qrImage" width="250" />
-<p id="message"></p>
 
+<div class="container">
+
+  <div class="header">
+    <div class="logo">
+      <img src="https://github.com/Zenoixnoize/GARFIELD-WHATSAPP-BOT-v8/raw/asdf/Cloud/PicsArt_22-04-15_10-13-49-205.png">
+    </div>
+    <h1 class="title">Garfield Bot</h1>
+    <p class="subtitle">Link your WhatsApp device</p>
+
+    <div class="social-icons">
+      <a class="youtube" href="https://youtube.com" target="_blank"><i class="fab fa-youtube"></i></a>
+      <a class="whatsapp" href="https://whatsapp.com" target="_blank"><i class="fab fa-whatsapp"></i></a>
+      <a class="github" href="https://github.com/xnodesdev" target="_blank"><i class="fab fa-github"></i></a>
+    </div>
+  </div>
+
+  <div class="toggle-container">
+    <div class="toggle-option active" data-mode="pair"><i class="fas fa-key"></i> Pair</div>
+    <div class="toggle-option" data-mode="qr"><i class="fas fa-qrcode"></i> QR</div>
+  </div>
+
+  <div class="input-group" id="inputGroup">
+    <input id="mobileNumber" class="input-field" placeholder="+947XXXXXXXX">
+  </div>
+
+  <button class="generate-btn" id="submit">Generate Pair Code</button>
+
+  <div class="loading" id="loading"><i class="fas fa-spinner fa-spin"></i></div>
+
+  <div class="code-display" id="codeDisplay">Your code will appear here</div>
+
+  <div class="qr-display" id="qrDisplay">
+    <img id="qrImage">
+    <div>Scan using WhatsApp → Linked Devices</div>
+  </div>
+
+  <button class="copy-btn" onclick="copyCode()">Copy</button>
+
+  <div class="footer">© Powered by Xnodes • Garfield Bot</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
 <script>
-const numberInput = document.getElementById("number");
-const submitBtn = document.getElementById("submit");
-const qrImage = document.getElementById("qrImage");
-const message = document.getElementById("message");
+let mode = "pair";
 
-submitBtn.onclick = async () => {
-    const number = numberInput.value.replace(/[^0-9]/g,'');
-    message.innerText = 'Generating QR...';
-    qrImage.src = '';
-    try {
-        const { data } = await axios(`/qr?number=${number}`);
-        if (data.qr) {
-            qrImage.src = data.qr;
-            message.innerText = data.message;
-        } else {
-            message.innerText = data.message || 'Failed to generate QR';
-        }
-    } catch(err) {
-        message.innerText = 'Error contacting server';
-        console.error(err);
-    }
+document.querySelectorAll(".toggle-option").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".toggle-option").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    mode = btn.dataset.mode;
+
+    document.getElementById("inputGroup").style.display = mode==="pair"?"block":"none";
+    document.getElementById("submit").style.display = mode==="pair"?"block":"none";
+    document.getElementById("qrDisplay").style.display = "none";
+    document.getElementById("codeDisplay").style.display = "block";
+
+    if(mode==="qr") loadQR();
+  };
+});
+
+async function loadQR(){
+  const qrBox=document.getElementById("qrDisplay");
+  const codeBox=document.getElementById("codeDisplay");
+  codeBox.innerHTML="Generating QR…";
+
+  try{
+    const r=await axios.get("/code");
+    if(r.data.qr){
+      document.getElementById("qrImage").src=r.data.qr;
+      qrBox.style.display="block";
+      codeBox.style.display="none";
+    } else codeBox.innerHTML="QR failed";
+  }catch{ codeBox.innerHTML="Server error"; }
+}
+
+document.getElementById("submit").onclick=async()=>{
+  const num=document.getElementById("mobileNumber").value.replace(/\D/g,"");
+  if(!num) return alert("Enter number");
+  document.getElementById("loading").style.display="block";
+
+  try{
+    const r=await axios.get(`/pair?number=${num}`);
+    document.getElementById("codeDisplay").innerText = r.data.code || "Unavailable";
+  }catch{
+    document.getElementById("codeDisplay").innerText="Error";
+  }
+  document.getElementById("loading").style.display="none";
 };
+
+function copyCode(){
+  navigator.clipboard.writeText(document.getElementById("codeDisplay").innerText);
+}
 </script>
+
 </body>
 </html>
