@@ -1,29 +1,46 @@
 {
-  "name": "garfield-pair-device",
-  "version": "1.0.0",
-  "description": "Garfield WhatsApp QR & session device",
-  "main": "./module.js",
+  "name": "garfield-bot",
+  "version": "8.0.0",
+  "description": "Garfield Bot - WhatsApp Pairing System with Xnodes Cloud Integration",
+  "main": "index.js",
   "type": "module",
-  "engines": { 
-    "node": ">=18.0.0"
+  "engines": {
+    "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "pm2 start module.js --deep-monitoring --attach --name garfield-session",
-    "stop": "pm2 stop garfield-session",
-    "restart": "pm2 restart garfield-session"
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "build": "echo 'No build step required'"
   },
-  "author": "Xnodes Developers",
-  "license": "GPL-3.0",
+  "author": "Xnodes",
+  "license": "ISC",
   "dependencies": {
     "@whiskeysockets/baileys": "latest",
-    "qrcode": "latest",
     "awesome-phonenumber": "latest",
-    "megajs": "latest",
-    "pino": "latest",
     "body-parser": "latest",
     "express": "latest",
+    "megajs": "latest",
+    "path": "latest",
     "phone": "latest",
-    "pm2": "latest"
+    "pino": "latest",
+    "qrcode": "latest",
+    "qrcode-terminal": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "latest"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "garfield",
+    "baileys",
+    "whatsapp-bot",
+    "xnodes",
+    "mega",
+    "cloud-session"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zenoixnoize/GARFIELD-WHATSAPP-BOT-v8.git"
   }
 }
-
