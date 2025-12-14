@@ -1,15 +1,21 @@
+
 {
-    "name": "Gifted Session Generator",
+    "name": "Garfield Session Generator",
     "description": "Web Session Generator",
-    "logo": "https://files.catbox.moe/52699c.jpg",
-    "repository": "https://github.com/mauricegift/gifted-sess",
-    "keywords": ["Gifted-Tech"],
+    "logo": "https://github.com/Zenoixnoize/GARFIELD-WHATSAPP-BOT-v8/raw/asdf/Cloud/PicsArt_22-04-15_10-13-49-205.png",
+    "repository": "https://github.com/xnodesdev/Garfieldv10PairDevice",
+    "keywords": ["Xnodes"],
     "success_url": "/", 
     "buildpacks": [{ "url": "https://github.com/heroku/heroku-buildpack-nodejs#latest" } ],
     "env": {      
       "PORT": {
         "description": "Port for web app.4000,5000,3000... any!",
-        "value": "50900",
+        "value": "5000",
+        "required": false 
+      },
+      "MESSAGE": {
+        "description": "Just Leave This Blank",
+        "value": "",
         "required": false 
       }
     }   
