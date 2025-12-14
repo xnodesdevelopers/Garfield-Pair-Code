@@ -1,23 +1,19 @@
-// qr.js
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const QRCode = require('qrcode');
-const pino = require('pino');
-const { Storage } = require("megajs");
-const {
-    default: Gifted_Tech,
-    useMultiFileAuthState,
-    makeCacheableSignalKeyStore,
-    Browsers,
-    delay,
-    fetchLatestBaileysVersion
-} = require('@whiskeysockets/baileys');
+import express from 'express';
+import fs from 'fs';
+import pino from 'pino';
+import { makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, fetchLatestBaileysVersion, jidNormalizedUser } from '@whiskeysockets/baileys';
+import { delay } from '@whiskeysockets/baileys';
+import QRCode from 'qrcode';
+import { Storage } from 'megajs';
 
 const router = express.Router();
-const sessionDir = path.join(__dirname, "temp");
 
-// Helpers
+// Remove file/folder helper
+function removeFile(path) {
+    if (fs.existsSync(path)) fs.rmSync(path, { recursive: true, force: true });
+}
+
+// Generate random Mega filename
 function randomMegaId(length = 6, numberLength = 4) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -26,127 +22,97 @@ function randomMegaId(length = 6, numberLength = 4) {
     return `${result}${number}`;
 }
 
+// Upload creds to Mega
 async function uploadCredsToMega(credsPath) {
     const storage = await new Storage({
         email: 'zenoinoize@gmail.com',
         password: 'openacc000'
     }).ready;
 
-    const fileSize = fs.statSync(credsPath).size;
-    const uploadResult = await storage.upload({
-        name: `${randomMegaId()}.json`,
-        size: fileSize
-    }, fs.createReadStream(credsPath)).complete;
-
+    const size = fs.statSync(credsPath).size;
+    const uploadResult = await storage.upload({ name: `${randomMegaId()}.json`, size }, fs.createReadStream(credsPath)).complete;
     const fileNode = storage.files[uploadResult.nodeId];
-    const megaUrl = await fileNode.link();
-    return megaUrl;
+    return await fileNode.link();
 }
 
-function removeFolder(folderPath) {
-    if (fs.existsSync(folderPath)) fs.rmSync(folderPath, { recursive: true, force: true });
-}
-
-// QR route
+// Main route
 router.get('/', async (req, res) => {
-    const id = Math.random().toString(36).substring(2, 10);
-    const tempPath = path.join(sessionDir, id);
-    let responseSent = false;
+    const number = req.query.number;
+    if (!number) return res.status(400).send({ error: 'Number required' });
+
+    const sessionId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const tempDir = `./temp/${sessionId}`;
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
     try {
-        fs.mkdirSync(tempPath, { recursive: true });
+        const { state, saveCreds } = await useMultiFileAuthState(tempDir);
         const { version } = await fetchLatestBaileysVersion();
-        const { state, saveCreds } = await useMultiFileAuthState(tempPath);
 
-        const client = Gifted_Tech({
+        let qrSent = false;
+        let megaSent = false;
+
+        const sock = makeWASocket({
             version,
+            logger: pino({ level: 'silent' }),
+            browser: Browsers.macOS('Safari'),
             auth: {
                 creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-            },
-            printQRInTerminal: false,
-            logger: pino({ level: "fatal" }),
-            browser: Browsers.macOS("Safari")
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' }))
+            }
         });
 
-        client.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', saveCreds);
 
-        client.ev.on('connection.update', async (update) => {
+        sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            if (qr && !responseSent) {
-                const qrImage = await QRCode.toDataURL(qr);
-                if (!res.headersSent) {
-                    res.send(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GARFIELD BOT QR</title>
-<style>
-body { display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background:#141414; font-family:sans-serif; color:#00ffe7; text-align:center; }
-.container { background: rgba(0,0,255,0.8); padding:30px; border-radius:15px; box-shadow:0 0 20px #00ffe7; }
-h1 { margin-bottom:15px; }
-input { padding:10px; border-radius:8px; border:none; width:250px; margin-bottom:15px; }
-button { padding:10px 20px; border:none; border-radius:8px; background:#25d366; color:white; cursor:pointer; }
-button:hover { background:#1da851; }
-img { width:300px; height:300px; margin-top:15px; }
-</style>
-</head>
-<body>
-<div class="container">
-<h1>GARFIELD BOT v10</h1>
-<input type="text" placeholder="Your Phone Number" id="phone" value="+94">
-<button onclick="alert('Scan the QR below with WhatsApp')">Generate QR</button>
-<img src="${qrImage}" alt="QR Code">
-<p>Scan this QR code with your WhatsApp app</p>
-</div>
-</body>
-</html>
-                    `);
-                    responseSent = true;
-                }
+            // Send QR to frontend
+            if (!qrSent && qr) {
+                qrSent = true;
+                const qrDataURL = await QRCode.toDataURL(qr);
+                res.send({ qr: qrDataURL, message: 'Scan QR with WhatsApp' });
             }
 
-            // When connected, upload to Mega and send Xnodes ID
-            if (connection === 'open') {
-                const credsPath = path.join(tempPath, 'creds.json');
+            // After successful connection
+            if (connection === 'open' && !megaSent) {
+                megaSent = true;
+                console.log('✅ WhatsApp connected! Uploading session to Mega...');
+                const credsPath = `${tempDir}/creds.json`;
                 if (fs.existsSync(credsPath)) {
-                    try {
-                        const megaUrl = await uploadCredsToMega(credsPath);
-                        const xnodesId = megaUrl.includes("https://mega.nz/file/") 
-                            ? 'Xnodes~' + megaUrl.split("https://mega.nz/file/")[1] 
-                            : 'Error: Invalid URL';
-                        console.log('Xnodes Session ID:', xnodesId);
-                        await client.sendMessage(client.user.id, { text: xnodesId });
-                    } catch (e) {
-                        console.error("Mega upload failed:", e);
+                    const megaUrl = await uploadCredsToMega(credsPath);
+                    console.log('🔗 Mega URL:', megaUrl);
+
+                    // Send session ID to yourself (optional)
+                    const userJid = sock.authState.creds.me?.id ? jidNormalizedUser(sock.authState.creds.me.id) : null;
+                    if (userJid) {
+                        await sock.sendMessage(userJid, { text: `Session ID: Xnodes~${megaUrl.split("https://mega.nz/file/")[1]}` });
                     }
                 }
-                await delay(2000);
-                await client.ws.close();
-                removeFolder(tempPath);
+
+                // Cleanup temp
+                setTimeout(() => removeFile(tempDir), 10000);
             }
 
-            // Retry on disconnect
-            if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
-                await delay(10000);
+            // Handle disconnects
+            if (connection === 'close') {
+                const code = lastDisconnect?.error?.output?.statusCode;
+                if (code === 401) removeFile(tempDir); // logged out
             }
         });
 
+        // Timeout if QR not generated
         setTimeout(() => {
-            if (!responseSent && !res.headersSent) {
-                res.send('<h3>QR Timeout</h3>');
-                removeFolder(tempPath);
+            if (!qrSent) {
+                res.status(408).send({ qr: null, message: 'QR generation timeout' });
+                removeFile(tempDir);
             }
-        }, 20000);
+        }, 30000);
 
     } catch (err) {
-        console.error(err);
-        removeFolder(tempPath);
-        if (!responseSent && !res.headersSent) res.status(500).send('<h3>QR Service Error</h3>');
+        console.error('Error:', err);
+        removeFile(tempDir);
+        if (!res.headersSent) res.status(500).send({ qr: null, error: 'Server error' });
     }
 });
 
-module.exports = router;
+export default router;
