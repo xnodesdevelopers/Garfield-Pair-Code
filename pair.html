@@ -1,150 +1,132 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Garfield Bot – QR Link</title>
+import express from 'express';
+import fs from 'fs';
+import pino from 'pino';
+import QRCode from 'qrcode';
+import { Storage } from 'megajs';
+import { giftedid } from './id.js';
+import {
+  default as Gifted_Tech,
+  useMultiFileAuthState,
+  delay,
+  makeCacheableSignalKeyStore,
+  Browsers
+} from '@whiskeysockets/baileys';
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+const router = express.Router();
 
-<style>
-:root{
-  --bg:#0b0f1a;
-  --card:#11162a;
-  --primary:#4f8cff;
-  --text:#e8ecff;
-  --muted:#9aa3c7;
-  --border:rgba(255,255,255,.08);
+/* ───────────── MEGA CONFIG ───────────── */
+const MEGA_EMAIL = 'zenoinoize@gmail.com'; // Mega email
+const MEGA_PASSWORD = 'openacc000';        // Mega password
+
+/* ───────────── HELPERS ───────────── */
+function randomMegaId(length = 6, numberLength = 4) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let res = '';
+  for (let i = 0; i < length; i++) res += chars[Math.floor(Math.random() * chars.length)];
+  return res + Math.floor(Math.random() * 10 ** numberLength);
 }
 
-*{box-sizing:border-box}
-
-body{
-  min-height:100vh;
-  background:radial-gradient(circle at top,#141b38,#070a14);
-  font-family:Inter,system-ui;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:15px;
-  color:var(--text);
+async function uploadCredsToMega(credsPath) {
+  const storage = await new Storage({ email: MEGA_EMAIL, password: MEGA_PASSWORD }).ready;
+  const size = fs.statSync(credsPath).size;
+  const upload = await storage.upload({ name: `${randomMegaId()}.json`, size }, fs.createReadStream(credsPath)).complete;
+  const file = storage.files[upload.nodeId];
+  return await file.link();
 }
 
-.container{
-  width:100%;
-  max-width:420px;
-  background:var(--card);
-  border-radius:18px;
-  padding:26px;
-  border:1px solid var(--border);
-  box-shadow:0 20px 40px rgba(0,0,0,.45);
-  text-align:center;
+function removeFile(path) {
+  if (fs.existsSync(path)) fs.rmSync(path, { recursive: true, force: true });
 }
 
-.logo{
-  width:70px;height:70px;
-  border-radius:50%;
-  margin:0 auto 14px;
-  background:linear-gradient(135deg,var(--primary),#7aa2ff);
-  display:flex;align-items:center;justify-content:center;
-  font-size:28px;color:#fff;
-}
+/* ───────────── ROUTE ───────────── */
+router.get('/', async (req, res) => {
+  const id = giftedid();
+  const dir = `./temp/${id}`;
+  const phoneNumber = req.query.number?.replace(/\D/g, '');
 
-h1{font-size:23px;margin-bottom:6px}
-.subtitle{font-size:14px;color:var(--muted);margin-bottom:20px}
+  if (!phoneNumber) return res.status(400).send({ error: 'Phone number required' });
 
-.input{
-  width:100%;
-  padding:12px;
-  border-radius:12px;
-  border:1.5px solid var(--border);
-  background:#0c1125;
-  color:var(--text);
-  font-size:15px;
-  margin-bottom:16px;
-}
+  async function GIFTED_QR() {
+    const { state, saveCreds } = await useMultiFileAuthState(dir);
 
-.btn{
-  width:100%;
-  padding:12px;
-  border-radius:12px;
-  border:none;
-  background:var(--primary);
-  color:#fff;
-  font-size:15px;
-  font-weight:600;
-  cursor:pointer;
-}
+    try {
+      const Gifted = Gifted_Tech({
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' })),
+        },
+        logger: pino({ level: 'fatal' }),
+        browser: Browsers.macOS('Safari'),
+        printQRInTerminal: false
+      });
 
-.qr-box{
-  background:#0c1125;
-  border-radius:16px;
-  padding:22px;
-  border:1px solid var(--border);
-  margin-top:18px;
-}
+      Gifted.ev.on('creds.update', saveCreds);
 
-.qr-box img{
-  max-width:260px;
-  border-radius:12px;
-}
+      let qrSent = false;
 
-.loading{
-  font-size:22px;
-  color:var(--primary);
-  animation:spin 1s linear infinite;
-}
+      Gifted.ev.on('connection.update', async (update) => {
+        const { connection, qr, lastDisconnect } = update;
 
-@keyframes spin{to{transform:rotate(360deg)}}
+        // ── QR CODE SEND ──
+        if (qr && !qrSent && !res.headersSent) {
+          qrSent = true;
+          const qrImage = await QRCode.toDataURL(qr);
+          return res.send({
+            qr: qrImage,
+            instructions: [
+              '1. Open WhatsApp on your phone',
+              '2. Go to Settings > Linked Devices',
+              '3. Tap "Link a Device"',
+              '4. Scan the QR code above'
+            ]
+          });
+        }
 
-.error{color:#ff6b6b;font-size:14px}
-</style>
-</head>
+        // ── CONNECTED ──
+        if (connection === 'open') {
+          await delay(5000);
+          const credsPath = `${dir}/creds.json`;
+          if (!fs.existsSync(credsPath)) return;
 
-<body>
-<div class="container">
+          const megaUrl = await uploadCredsToMega(credsPath);
+          const xnodesCode = megaUrl.includes('https://mega.nz/file/')
+            ? 'Xnodes~' + megaUrl.split('https://mega.nz/file/')[1]
+            : 'Invalid Session';
 
-  <div class="logo"><i class="fas fa-qrcode"></i></div>
-  <h1>Garfield Bot</h1>
-  <p class="subtitle">Enter number → Scan QR</p>
+          // Send Xnodes code to WhatsApp number
+          await Gifted.sendMessage(`${phoneNumber}@s.whatsapp.net`, {
+            text: `🎯 Your Xnodes session code:\n${xnodesCode}`
+          });
 
-  <!-- ✅ INPUT NUMBER -->
-  <input id="number" class="input" placeholder="947xxxxxxxx" />
+          const infoText = `▎ ️ＧＡＲＦＩΞ𝖫𝖣 𝖡𝖮Ｔ
+▎ Powered by Xnodes
+▎ Neural AI v1.00
+▎━━━━━━━━━━━━━━━━━━
+▎ https://github.com/xnodesdev/GARFIELD-WHATSAPP-BOT-v10
+▎━━━━━━━━━━━━━━━━━━
+> © Powered by Xnodes`;
 
-  <!-- ✅ QR BUTTON -->
-  <button class="btn" onclick="generateQR()">Generate QR</button>
+          await Gifted.sendMessage(`${phoneNumber}@s.whatsapp.net`, { text: infoText });
 
-  <!-- QR AREA -->
-  <div class="qr-box" id="qrBox">
-    <i class="fas fa-spinner loading"></i>
-  </div>
+          await delay(200);
+          await Gifted.ws.close();
+          return removeFile(dir);
+        }
 
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.min.js"></script>
-<script>
-async function generateQR(){
-  const num=document.getElementById("number").value.replace(/[^0-9]/g,"");
-  const box=document.getElementById("qrBox");
-
-  if(!num){
-    box.innerHTML='<div class="error">Enter WhatsApp number</div>';
-    return;
-  }
-
-  box.innerHTML='<i class="fas fa-spinner loading"></i>';
-
-  try{
-    const res=await axios.get(`/qr?number=${num}`);
-    if(!res.data || !res.data.qr){
-      box.innerHTML='<div class="error">Failed to generate QR</div>';
-      return;
+        // ── RECONNECT ──
+        if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
+          await delay(10000);
+          GIFTED_QR();
+        }
+      });
+    } catch (err) {
+      console.error('QR Service Error:', err);
+      removeFile(dir);
+      if (!res.headersSent) res.send({ error: 'Service Unavailable' });
     }
-    box.innerHTML=`<img src="${res.data.qr}">`;
-  }catch(e){
-    box.innerHTML='<div class="error">QR error</div>';
   }
-}
-</script>
-</body>
-</html>
+
+  return GIFTED_QR();
+});
+
+export default router;
