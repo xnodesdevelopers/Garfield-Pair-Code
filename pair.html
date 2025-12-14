@@ -1,59 +1,77 @@
-// qr.js
-const express = require('express');
-const fs = require('fs');
-const pino = require('pino');
-const { default: Gifted_Tech, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, delay } = require('@whiskeysockets/baileys');
-const router = express.Router();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GARFIELD-WHATSAPP-BOT-v10</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    body { display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background:#141414; font-family:'Arial',sans-serif; color:#fff; }
+    .container { display:flex; flex-direction:column; align-items:center; }
+    .box { width:300px; padding:20px; text-align:center; background:rgba(0,0,255,0.8); border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.7); }
+    .input-container { display:flex; gap:0.3rem; margin-top:10px; }
+    .input-container input { flex:1; padding:0.8rem; border-radius:0.5rem 0 0 0.5rem; border:none; background:#000; color:#fff; }
+    .input-container button { padding:0.8rem; border-radius:0 0.5rem 0.5rem 0; border:none; background:#25d366; color:#fff; cursor:pointer; }
+    .input-container button:hover { background:#2980b9; }
+    #qr-canvas { margin-top:15px; }
+    #waiting-message { margin-top:10px; color:#fff; }
+    .fa-spinner { animation:spin 2s linear infinite; }
+    @keyframes spin { 0%{transform:rotate(0deg);}100%{transform:rotate(360deg);} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="box">
+      <h3>GARFIELD-WHATSAPP-BOT-v10</h3>
+      <h6>Enter Your WhatsApp Number with Country Code</h6>
+      <div class="input-container">
+        <input type="number" id="number" placeholder="94xxxxxxxx">
+        <button id="submit">Get QR</button>
+      </div>
+      <div id="waiting-message"></div>
+      <canvas id="qr-canvas"></canvas>
+    </div>
+  </div>
 
-router.get('/', async (req, res) => {
-    const number = req.query.number;
-    if (!number) return res.status(400).send({ error: "Number is required" });
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    const numberInput = document.getElementById("number");
+    const submitBtn = document.getElementById("submit");
+    const waitingMsg = document.getElementById("waiting-message");
+    const qrCanvas = document.getElementById("qr-canvas");
 
-    const id = Math.random().toString(36).substring(2, 10); // random session folder
-    const tempDir = `./temp/${id}`;
+    submitBtn.addEventListener("click", async () => {
+      const number = numberInput.value.replace(/[^0-9]/g, "");
+      if (!number || number.length < 10) {
+        waitingMsg.innerText = "❗ Invalid number format. Please try again.";
+        return;
+      }
 
-    try {
-        fs.mkdirSync(tempDir, { recursive: true });
+      waitingMsg.innerHTML = 'Generating QR... <i class="fas fa-spinner fa-spin"></i>';
+      qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 
-        const { state, saveCreds } = await useMultiFileAuthState(tempDir);
-
-        const client = Gifted_Tech({
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-            },
-            printQRInTerminal: false,
-            logger: pino({ level: "fatal" }),
-            browser: Browsers.macOS("Safari")
-        });
-
-        client.ev.on('creds.update', saveCreds);
-
-        // Listen for QR code
-        client.ev.once('connection.update', async (update) => {
-            if (update.qr) {
-                // Send the QR as base64 string
-                const qrData = update.qr;
-                res.send({ qr: qrData });
-            } else if (update.connection === 'open') {
-                res.send({ qr: null, message: 'Already connected' });
-            }
-        });
-
-        // Optional: timeout if QR not generated
-        setTimeout(() => {
-            if (!res.headersSent) {
-                res.send({ qr: null, message: 'QR code timeout' });
-            }
-        }, 15000);
-
-    } catch (err) {
-        console.error(err);
-        if (!res.headersSent) {
-            res.status(500).send({ qr: null, error: "Server error" });
+      try {
+        const { data } = await axios(`/qr?number=${number}`);
+        if (!data.qr) {
+          waitingMsg.innerText = data.message || "❗ QR code generation failed.";
+          return;
         }
-    }
-});
 
-module.exports = router;
+        QRCode.toCanvas(qrCanvas, data.qr, { width: 200 }, function (error) {
+          if (error) {
+            waitingMsg.innerText = "❗ QR rendering failed.";
+            console.error(error);
+          } else {
+            waitingMsg.innerText = "Scan this QR with WhatsApp to login.";
+          }
+        });
 
+      } catch (err) {
+        console.error(err);
+        waitingMsg.innerText = "❗ Service unavailable.";
+      }
+    });
+  </script>
+</body>
+</html>
