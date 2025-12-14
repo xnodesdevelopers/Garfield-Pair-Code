@@ -1,22 +1,40 @@
-const express = require('express');
+import express from 'express';
+import bodyParser from 'body-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
+import code from './pair.js'; // Ensure your pair.js is also ESM
+
 const app = express();
-__path = process.cwd()
-const bodyParser = require("body-parser");
+
+// Allow more listeners
+EventEmitter.defaultMaxListeners = 500;
+
+// __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const PORT = process.env.PORT || 8000;
-let code = require('./pair');
-require('events').EventEmitter.defaultMaxListeners = 500;
+
+// Routes
 app.use('/code', code);
-app.use('/',async (req, res, next) => {
-res.sendFile(__path + '/pair.html')
+
+app.use('/', async (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'pair.html'));
 });
+
+// Body parser
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Start server
 app.listen(PORT, () => {
-    console.log(`
+  console.log(`
 Deployment Successful!
 
- Gifted-Session-Server Running on http://localhost:` + PORT)
-})
+Gifted-Session-Server Running on http://localhost:${PORT}
+  `);
+});
 
-module.exports = app
-       
+// Export app for testing or other modules
+export default app;
