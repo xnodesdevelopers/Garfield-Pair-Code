@@ -1,118 +1,149 @@
 import express from 'express';
 import fs from 'fs';
 import pino from 'pino';
-import { makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, fetchLatestBaileysVersion, jidNormalizedUser } from '@whiskeysockets/baileys';
-import { delay } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
 import { Storage } from 'megajs';
+import { giftedid } from './id.js';
+
+import {
+  default as Gifted_Tech,
+  useMultiFileAuthState,
+  delay,
+  makeCacheableSignalKeyStore,
+  Browsers
+} from '@whiskeysockets/baileys';
 
 const router = express.Router();
 
-// Remove file/folder helper
-function removeFile(path) {
-    if (fs.existsSync(path)) fs.rmSync(path, { recursive: true, force: true });
-}
+/* ───────────── MEGA CONFIG (FINAL) ───────────── */
 
-// Generate random Mega filename
+const MEGA_EMAIL = 'zenoinoize@gmail.com';     // 🔐 YOUR MEGA EMAIL
+const MEGA_PASSWORD = 'openacc000';            // 🔐 YOUR MEGA PASSWORD
+
+/* ───────────── HELPERS ───────────── */
+
 function randomMegaId(length = 6, numberLength = 4) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    const number = Math.floor(Math.random() * Math.pow(10, numberLength));
-    return `${result}${number}`;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let res = '';
+  for (let i = 0; i < length; i++) {
+    res += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return res + Math.floor(Math.random() * 10 ** numberLength);
 }
 
-// Upload creds to Mega
 async function uploadCredsToMega(credsPath) {
-    const storage = await new Storage({
-        email: 'zenoinoize@gmail.com',
-        password: 'openacc000'
-    }).ready;
+  const storage = await new Storage({
+    email: MEGA_EMAIL,
+    password: MEGA_PASSWORD
+  }).ready;
 
-    const size = fs.statSync(credsPath).size;
-    const uploadResult = await storage.upload({ name: `${randomMegaId()}.json`, size }, fs.createReadStream(credsPath)).complete;
-    const fileNode = storage.files[uploadResult.nodeId];
-    return await fileNode.link();
+  const size = fs.statSync(credsPath).size;
+
+  const upload = await storage.upload(
+    { name: `${randomMegaId()}.json`, size },
+    fs.createReadStream(credsPath)
+  ).complete;
+
+  const file = storage.files[upload.nodeId];
+  return await file.link();
 }
 
-// Main route
-router.get('/', async (req, res) => {
-    const number = req.query.number;
-    if (!number) return res.status(400).send({ error: 'Number required' });
+function removeFile(path) {
+  if (fs.existsSync(path)) {
+    fs.rmSync(path, { recursive: true, force: true });
+  }
+}
 
-    const sessionId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    const tempDir = `./temp/${sessionId}`;
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+/* ───────────── ROUTE ───────────── */
+
+router.get('/', async (req, res) => {
+  const id = giftedid();
+  const dir = `./temp/${id}`;
+
+  async function GIFTED_QR() {
+    const { state, saveCreds } = await useMultiFileAuthState(dir);
 
     try {
-        const { state, saveCreds } = await useMultiFileAuthState(tempDir);
-        const { version } = await fetchLatestBaileysVersion();
+      const Gifted = Gifted_Tech({
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(
+            state.keys,
+            pino({ level: 'fatal' })
+          )
+        },
+        logger: pino({ level: 'fatal' }),
+        browser: Browsers.macOS('Safari'),
+        printQRInTerminal: false
+      });
 
-        let qrSent = false;
-        let megaSent = false;
+      Gifted.ev.on('creds.update', saveCreds);
 
-        const sock = makeWASocket({
-            version,
-            logger: pino({ level: 'silent' }),
-            browser: Browsers.macOS('Safari'),
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' }))
-            }
-        });
+      Gifted.ev.on('connection.update', async (update) => {
+        const { connection, qr, lastDisconnect } = update;
 
-        sock.ev.on('creds.update', saveCreds);
+        /* ── QR SEND ── */
+        if (qr && !res.headersSent) {
+          const qrImage = await QRCode.toDataURL(qr);
+          return res.send({ qr: qrImage });
+        }
 
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+        /* ── CONNECTED ── */
+        if (connection === 'open') {
+          await delay(5000);
 
-            // Send QR to frontend
-            if (!qrSent && qr) {
-                qrSent = true;
-                const qrDataURL = await QRCode.toDataURL(qr);
-                res.send({ qr: qrDataURL, message: 'Scan QR with WhatsApp' });
-            }
+          const credsPath = `${dir}/creds.json`;
+          if (!fs.existsSync(credsPath)) return;
 
-            // After successful connection
-            if (connection === 'open' && !megaSent) {
-                megaSent = true;
-                console.log('✅ WhatsApp connected! Uploading session to Mega...');
-                const credsPath = `${tempDir}/creds.json`;
-                if (fs.existsSync(credsPath)) {
-                    const megaUrl = await uploadCredsToMega(credsPath);
-                    console.log('🔗 Mega URL:', megaUrl);
+          const megaUrl = await uploadCredsToMega(credsPath);
+          const sid = megaUrl.includes('https://mega.nz/file/')
+            ? 'Xnodes~' + megaUrl.split('https://mega.nz/file/')[1]
+            : 'Invalid Session';
 
-                    // Send session ID to yourself (optional)
-                    const userJid = sock.authState.creds.me?.id ? jidNormalizedUser(sock.authState.creds.me.id) : null;
-                    if (userJid) {
-                        await sock.sendMessage(userJid, { text: `Session ID: Xnodes~${megaUrl.split("https://mega.nz/file/")[1]}` });
-                    }
-                }
+          const sessionMsg = await Gifted.sendMessage(
+            Gifted.user.id,
+            { text: sid },
+            { disappearingMessagesInChat: true, ephemeralExpiration: 600 }
+          );
 
-                // Cleanup temp
-                setTimeout(() => removeFile(tempDir), 10000);
-            }
+          const GIFTED_TEXT = `▎ ️ＧＡＲＦＩΞ𝖫𝖣 𝖡𝖮Т
+▎ Powered by Xnodes
+▎ Neural AI v1.00
+▎━━━━━━━━━━━━━━━━━━
+▎ https://github.com/xnodesdev/GARFIELD-WHATSAPP-BOT-v10
+▎━━━━━━━━━━━━━━━━━━
+> © Powered by Xnodes`;
 
-            // Handle disconnects
-            if (connection === 'close') {
-                const code = lastDisconnect?.error?.output?.statusCode;
-                if (code === 401) removeFile(tempDir); // logged out
-            }
-        });
+          await Gifted.sendMessage(
+            Gifted.user.id,
+            { text: GIFTED_TEXT },
+            { quoted: sessionMsg, disappearingMessagesInChat: true, ephemeralExpiration: 600 }
+          );
 
-        // Timeout if QR not generated
-        setTimeout(() => {
-            if (!qrSent) {
-                res.status(408).send({ qr: null, message: 'QR generation timeout' });
-                removeFile(tempDir);
-            }
-        }, 30000);
+          await delay(200);
+          await Gifted.ws.close();
+          return removeFile(dir);
+        }
 
+        /* ── RECONNECT ── */
+        if (
+          connection === 'close' &&
+          lastDisconnect?.error?.output?.statusCode !== 401
+        ) {
+          await delay(10000);
+          GIFTED_QR();
+        }
+      });
     } catch (err) {
-        console.error('Error:', err);
-        removeFile(tempDir);
-        if (!res.headersSent) res.status(500).send({ qr: null, error: 'Server error' });
+      console.error('QR Service Error:', err);
+      removeFile(dir);
+      if (!res.headersSent) {
+        res.send({ error: 'Service Unavailable' });
+      }
     }
+  }
+
+  return GIFTED_QR();
 });
 
 export default router;
