@@ -1,31 +1,37 @@
 import express from 'express';
-import path from 'path';
 import bodyParser from 'body-parser';
-import qrRouter from './qr.js'; // new QR-based router
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
+import code from './pair.js'; // pair.js MUST be ESM
 
 const app = express();
-const __dirname = path.resolve(); // current working dir
+
+// ✅ ESM-safe max listeners
+EventEmitter.defaultMaxListeners = 500;
+
+// __dirname replacement for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const PORT = process.env.PORT || 8000;
 
-// Increase max listeners to avoid warnings
-require('events').EventEmitter.defaultMaxListeners = 500;
-
-// Serve the QR route
-app.use('/qr', qrRouter);
-
-// Serve your frontend HTML
-app.use('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'pair.html')); // your old HTML
-});
-
-// Body parser
+// Middlewares
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Routes
+app.use('/code', code);
+
+app.use('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pair.html'));
+});
+
 // Start server
 app.listen(PORT, () => {
-    console.log(`
-✅ Deployment Successful!
+  console.log(`
+Deployment Successful!
+
 Gifted-Session-Server Running on http://localhost:${PORT}
 `);
 });
