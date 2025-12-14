@@ -1,22 +1,33 @@
-const express = require('express');
+import express from 'express';
+import path from 'path';
+import bodyParser from 'body-parser';
+import qrRouter from './qr.js'; // new QR-based router
+
 const app = express();
-__path = process.cwd()
-const bodyParser = require("body-parser");
+const __dirname = path.resolve(); // current working dir
 const PORT = process.env.PORT || 8000;
-let code = require('./pair');
+
+// Increase max listeners to avoid warnings
 require('events').EventEmitter.defaultMaxListeners = 500;
-app.use('/code', code);
-app.use('/',async (req, res, next) => {
-res.sendFile(__path + '/pair.html')
+
+// Serve the QR route
+app.use('/qr', qrRouter);
+
+// Serve your frontend HTML
+app.use('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pair.html')); // your old HTML
 });
+
+// Body parser
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Start server
 app.listen(PORT, () => {
     console.log(`
-Deployment Successful!
+✅ Deployment Successful!
+Gifted-Session-Server Running on http://localhost:${PORT}
+`);
+});
 
- Gifted-Session-Server Running on http://localhost:` + PORT)
-})
-
-module.exports = app
-       
+export default app;
